@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 # Dibaca saat task berjalan, bukan saat DAG di-parse.
 
 API_PREFIX = "/api/v1"
-PER_PAGE = 100  # jumlah data per halaman saat paginasi
+PER_PAGE = 100  # jumlah data yang diambil (maksimal yang diterima API: 100)
 
 HEADERS = {
     "Accept": "application/json",
@@ -109,33 +109,27 @@ def login(session: requests.Session, base_url: str) -> str:
     return token
 
 
-def fetch_all_aset() -> list[dict]:
-    """Login sekali, lalu GET /aset halaman demi halaman sampai habis."""
+def fetch_aset() -> list[dict]:
+    """Login, lalu GET /aset sekali (hanya halaman pertama, PER_PAGE data)."""
     base_url = _base_url()
     with requests.Session() as session:
         session.headers.update(HEADERS)
         session.headers["Authorization"] = f"Bearer {login(session, base_url)}"
 
-        semua, page, last_page = [], 1, 1
-        while page <= last_page:
-            resp = session.get(
-                f"{base_url}/aset",
-                params={"per_page": PER_PAGE, "page": page},
-                timeout=60,
-            )
-            if not resp.ok:
-                raise RuntimeError(f"GET /aset page={page} gagal: HTTP {resp.status_code} | {resp.text[:300]}")
+        resp = session.get(f"{base_url}/aset", params={"per_page": PER_PAGE}, timeout=60)
+        if not resp.ok:
+            raise RuntimeError(f"GET /aset gagal: HTTP {resp.status_code} | {resp.text[:300]}")
 
-            body = resp.json()
-            if not body.get("success") or not isinstance(body.get("data"), list):
-                raise ValueError(f"Format respons /aset tidak sesuai (page={page}): {body.get('message')}")
+        body = resp.json()
+        if not body.get("success") or not isinstance(body.get("data"), list):
+            raise ValueError(f"Format respons /aset tidak sesuai: {body.get('message')}")
 
-            semua.extend(body["data"])
-            last_page = int((body.get("meta") or {}).get("last_page") or page)
-            log.info("Halaman %d/%d: %d data", page, last_page, len(body["data"]))
-            page += 1
-
-    return semua
+        meta = body.get("meta") or {}
+        log.info(
+            "GET /aset: %d data diambil (total di API: %s, hanya halaman pertama).",
+            len(body["data"]), meta.get("total"),
+        )
+        return body["data"]
 
 
 # ----------------------------------------------------------- transform helpers
@@ -215,7 +209,7 @@ def e_aset_daftar_aset():
     @task
     def tarik_dan_simpan_aset():
         # 1. EXTRACT
-        data = fetch_all_aset()
+        data = fetch_aset()
         total_data = len(data)
         log.info("Berhasil mengambil %d data aset dari e-Aset.", total_data)
         if total_data == 0:
