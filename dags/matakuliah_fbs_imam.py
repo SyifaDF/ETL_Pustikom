@@ -20,8 +20,9 @@ if ENV_FILE.is_file():
 else:
     log.warning("File %s tidak ditemukan, memakai environment yang sudah ada.", ENV_FILE)
 
-# Endpoint SIAKAD UNJ: {BASE_URL}/{kode_prodi_unj}
-BASE_URL = "https://service-siakad.unj.ac.id/siakad_api/api/dataDikti/matakuliah/125"
+# Endpoint SIAKAD UNJ (IP internal): {BASE_URL}/{kode_prodi_unj}
+# Server Airflow tidak bisa menjangkau https://service-siakad.unj.ac.id (IP publik, timeout)
+BASE_URL = "http://192.168.4.30/siakad_api/api/dataDikti/matakuliah/125"
 
 # Daftar kode prodi UNJ (FBS) yang ditarik. Tambahkan kode prodi lain di sini.
 KODE_PRODI_LIST = [
