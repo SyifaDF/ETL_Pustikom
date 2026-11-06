@@ -1,0 +1,6 @@
+http://10.255.1.38/item-usages/999009
+
+table :
+1. nama satker
+2. alias satker
+3. kode unit
